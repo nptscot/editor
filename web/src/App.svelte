@@ -28,10 +28,11 @@
     remoteStorage,
     assetUrl,
     boundaryName,
+    loadingScreen,
   } from "./stores";
   import { Backend } from "./worker";
   import init, { JsRouteSnapper } from "route-snapper";
-  import { Loading } from "svelte-utils";
+  import LoadingScreen from "./common/LoadingScreen.svelte";
   import ReferenceLayers from "./layers/ReferenceLayers.svelte";
   // TODO Indirect dependencies
   import * as pmtiles from "pmtiles";
@@ -44,8 +45,6 @@
     maplibregl.addProtocol("pmtiles", protocol.tile);
   }
 
-  let loading = "";
-
   let map: Map;
   $: if (map) {
     mapStore.set(map);
@@ -56,7 +55,7 @@
 
     let params = new URLSearchParams(window.location.search);
     $boundaryName = params.get("boundary") || "LAD_City of Edinburgh";
-    loading = `Loading ${$boundaryName}`;
+    await loadingScreen(`Loading ${$boundaryName}`);
 
     let backendWorker = new Backend();
 
@@ -83,7 +82,7 @@
       }
     }
 
-    loading = "";
+    await loadingScreen("");
 
     let bbox = await backendWorker.getBounds();
     $routeA = {
@@ -128,7 +127,7 @@
   }
 </script>
 
-<Loading {loading} />
+<LoadingScreen />
 
 <Layout>
   <div slot="left">

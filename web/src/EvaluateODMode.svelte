@@ -2,22 +2,20 @@
   import { GeoJSON, LineLayer } from "svelte-maplibre";
   import { SplitComponent } from "svelte-utils/three_column_layout";
   import { Popup } from "svelte-utils/map";
-  import { backend, mode, type EvaluateODOut } from "./stores";
+  import { loadingScreen, backend, mode, type EvaluateODOut } from "./stores";
   import { onMount } from "svelte";
   import { colorByInraType } from "./common";
   import type {
     ExpressionSpecification,
     DataDrivenPropertyValueSpecification,
   } from "maplibre-gl";
-  import { Loading } from "svelte-utils";
 
   let gj: EvaluateODOut | null = null;
-  let loading = "";
 
   onMount(async () => {
-    loading = "Calculating routes for all OD data";
+    await loadingScreen("Calculating routes for all OD data");
     gj = await $backend!.evaluateOD();
-    loading = "";
+    await loadingScreen("");
   });
 
   function lineWidth(
@@ -41,8 +39,6 @@
     return ["+", thin, ["*", range_output, calculatePercent]];
   }
 </script>
-
-<Loading {loading} />
 
 <SplitComponent>
   <div slot="left">

@@ -5,16 +5,16 @@
     infraTypeMapping,
     autosave,
     mainModeRoutesChanged,
+    loadingScreen,
   } from "../stores";
   import { colorByInraType } from "../common";
   import { Popup } from "svelte-utils/map";
-  import { Loading, Modal, notNull } from "svelte-utils";
+  import { Modal, notNull } from "svelte-utils";
   import LayerControls from "./LayerControls.svelte";
 
   let show = false;
   let firstLoad = false;
   let showImportModal = false;
-  let loading = "";
 
   $: if (show) {
     firstLoad = true;
@@ -23,7 +23,7 @@
   async function importExisting() {
     showImportModal = false;
     if ($backend) {
-      loading = "Importing existing network";
+      await loadingScreen("Importing existing network");
       try {
         let numChanges = $backend.importExistingRoutes();
         let noun = numChanges == 1 ? "route segment" : "route segments";
@@ -33,12 +33,10 @@
       } catch (err) {
         window.alert(`Import failed: ${err}`);
       }
-      loading = "";
+      await loadingScreen("");
     }
   }
 </script>
-
-<Loading {loading} />
 
 <LayerControls>
   <label>
