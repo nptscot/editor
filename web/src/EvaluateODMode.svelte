@@ -9,11 +9,15 @@
     ExpressionSpecification,
     DataDrivenPropertyValueSpecification,
   } from "maplibre-gl";
+  import { Loading } from "svelte-utils";
 
   let gj: EvaluateODOut | null = null;
+  let loading = "";
 
   onMount(async () => {
+    loading = "Calculating routes for all OD data";
     gj = await $backend!.evaluateOD();
+    loading = "";
   });
 
   function lineWidth(
@@ -37,6 +41,8 @@
     return ["+", thin, ["*", range_output, calculatePercent]];
   }
 </script>
+
+<Loading {loading} />
 
 <SplitComponent>
   <div slot="left">

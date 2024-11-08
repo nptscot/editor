@@ -1,9 +1,14 @@
 <script lang="ts">
   import { backend, stats } from "./stores";
   import { onMount } from "svelte";
+  import { Loading } from "svelte-utils";
+
+  let loading = "";
 
   async function recalc() {
+    loading = "Recalculating stats";
     $stats = await $backend!.recalculateStats();
+    loading = "";
   }
 
   onMount(async () => {
@@ -12,6 +17,8 @@
     }
   });
 </script>
+
+<Loading {loading} />
 
 <button on:click={recalc}>Recalculate</button>
 

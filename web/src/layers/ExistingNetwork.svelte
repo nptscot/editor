@@ -8,12 +8,13 @@
   } from "../stores";
   import { colorByInraType } from "../common";
   import { Popup } from "svelte-utils/map";
-  import { Modal, notNull } from "svelte-utils";
+  import { Loading, Modal, notNull } from "svelte-utils";
   import LayerControls from "./LayerControls.svelte";
 
   let show = false;
   let firstLoad = false;
   let showImportModal = false;
+  let loading = "";
 
   $: if (show) {
     firstLoad = true;
@@ -22,14 +23,22 @@
   async function importExisting() {
     showImportModal = false;
     if ($backend) {
-      let numChanges = $backend.importExistingRoutes();
-      let noun = numChanges == 1 ? "route segment" : "route segments";
-      await autosave();
-      $mainModeRoutesChanged += 1;
-      window.alert(`Imported ${numChanges} ${noun}`);
+      loading = "Importing existing network";
+      try {
+        let numChanges = $backend.importExistingRoutes();
+        let noun = numChanges == 1 ? "route segment" : "route segments";
+        await autosave();
+        $mainModeRoutesChanged += 1;
+        window.alert(`Imported ${numChanges} ${noun}`);
+      } catch (err) {
+        window.alert(`Import failed: ${err}`);
+      }
+      loading = "";
     }
   }
 </script>
+
+<Loading {loading} />
 
 <LayerControls>
   <label>
