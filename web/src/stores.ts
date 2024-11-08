@@ -30,12 +30,23 @@ export let routeA: Writable<{ lng: number; lat: number } | null> =
 export let routeB: Writable<{ lng: number; lat: number } | null> =
   writable(null);
 
-export let loading = writable("");
+export let loading: Writable<HTMLDivElement | null> = writable(null);
 
-// TODO Explain why async
-export async function loadingScreen(msg: string) {
-  console.log(`loading: ${msg}`);
-  loading.set(msg);
+// TODO Explain
+export function loadingScreen(msg: string) {
+  let div = get(loading);
+  if (!div) {
+          console.log(`Got a loading screen message before the component is ready: ${msg}`);
+          return;
+  }
+
+  div.innerText = msg;
+        if (msg.length > 0) {
+  div.style.visibility = "visible";
+        } else {
+  div.style.visibility = "hidden";
+        }
+  console.log(`Update loading screen: ${msg}, length ${msg.length}. Visibility now ${div.style.visibility}`);
 }
 
 export let infraTypes: [string, string, string][] = [

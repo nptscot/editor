@@ -23,7 +23,7 @@
   async function importExisting() {
     showImportModal = false;
     if ($backend) {
-      await loadingScreen("Importing existing network");
+      loadingScreen("Importing existing network");
       try {
         let numChanges = $backend.importExistingRoutes();
         let noun = numChanges == 1 ? "route segment" : "route segments";
@@ -33,7 +33,7 @@
       } catch (err) {
         window.alert(`Import failed: ${err}`);
       }
-      await loadingScreen("");
+      loadingScreen("");
     }
   }
 </script>

@@ -3,9 +3,9 @@
   import { onMount } from "svelte";
 
   async function recalc() {
-    await loadingScreen("Recalculating stats");
+    loadingScreen("Recalculating stats");
     $stats = await $backend!.recalculateStats();
-    await loadingScreen("");
+    loadingScreen("");
   }
 
   onMount(async () => {

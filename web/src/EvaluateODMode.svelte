@@ -13,9 +13,9 @@
   let gj: EvaluateODOut | null = null;
 
   onMount(async () => {
-    await loadingScreen("Calculating routes for all OD data");
+    loadingScreen("Calculating routes for all OD data");
     gj = await $backend!.evaluateOD();
-    await loadingScreen("");
+    loadingScreen("");
   });
 
   function lineWidth(

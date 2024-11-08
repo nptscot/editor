@@ -3,9 +3,7 @@
   import { loading } from "../stores";
 </script>
 
-{#if $loading}
-  <div>{$loading}</div>
-{/if}
+<div bind:this={$loading} style:visibility="none" id="loading" />
 
 <style>
   div {

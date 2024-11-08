@@ -55,7 +55,7 @@
 
     let params = new URLSearchParams(window.location.search);
     $boundaryName = params.get("boundary") || "LAD_City of Edinburgh";
-    await loadingScreen(`Loading ${$boundaryName}`);
+    loadingScreen(`Loading ${$boundaryName}`);
 
     let backendWorker = new Backend();
 
@@ -82,7 +82,7 @@
       }
     }
 
-    await loadingScreen("");
+    loadingScreen("");
 
     let bbox = await backendWorker.getBounds();
     $routeA = {
