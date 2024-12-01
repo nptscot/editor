@@ -54,7 +54,7 @@ pub struct MapModel {
 
     // Per RoadID
     traffic_volumes: Vec<usize>,
-    core_network: Vec<bool>,
+    core_network: Vec<MapMatch>,
     // Go Dutch totals for all purposes
     precalculated_flows: Vec<usize>,
     // mph
@@ -64,6 +64,14 @@ pub struct MapModel {
     infra_types: Vec<Option<InfraType>>,
     #[serde(skip_serializing, skip_deserializing, default)]
     los: Vec<LevelOfService>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MapMatch {
+    pub hausdorff: f64,
+    pub frechet: f64,
+    pub endpt1_diff: f64,
+    pub endpt2_diff: f64,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -101,7 +109,7 @@ impl MapModel {
         town_centres: Vec<places::TownCentre>,
         data_zones: Vec<places::DataZone>,
         traffic_volumes: Vec<usize>,
-        core_network: Vec<bool>,
+        core_network: Vec<MapMatch>,
         precalculated_flows: Vec<usize>,
     ) -> Self {
         let speeds = graph

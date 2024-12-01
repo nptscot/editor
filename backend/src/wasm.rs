@@ -282,9 +282,13 @@ impl MapModel {
     pub fn render_core_network(&self) -> Result<String, JsValue> {
         let mut features = Vec::new();
         for (road, cn) in self.graph.roads.iter().zip(self.core_network.iter()) {
-            if *cn {
-                features.push(self.graph.mercator.to_wgs84_gj(&road.linestring));
-            }
+            let mut f = self.graph.mercator.to_wgs84_gj(&road.linestring);
+            f.set_property("matched", cn.hausdorff != f64::INFINITY);
+            f.set_property("hausdorff", cn.hausdorff);
+            f.set_property("frechet", cn.frechet);
+            f.set_property("endpt1_diff", cn.endpt1_diff);
+            f.set_property("endpt2_diff", cn.endpt2_diff);
+            features.push(f);
         }
 
         Ok(serde_json::to_string(&FeatureCollection {

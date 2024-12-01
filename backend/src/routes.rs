@@ -120,9 +120,12 @@ impl MapModel {
         let mut imports = Vec::new();
         for idx in 0..self.graph.roads.len() {
             let road_id = RoadID(idx);
-            if used_roads.contains(&road_id) || !self.core_network[idx] {
+            if true {
                 continue;
             }
+            /*if used_roads.contains(&road_id) || !self.core_network[idx] {
+                continue;
+            }*/
             // TODO What type?
             imports.push((road_id, InfraType::SegregatedNarrow));
         }

@@ -5,13 +5,13 @@ use std::io::BufWriter;
 use anyhow::{bail, Result};
 use clap::Parser;
 use gdal::{vector::LayerAccess, Dataset};
-use geo::{Distance, Euclidean, Geometry, LineString, MultiPolygon};
+use geo::{Distance, Euclidean, FrechetDistance, HausdorffDistance, Geometry, LineString, MultiPolygon};
 use graph::{Graph, Timer};
 use log::info;
 use rstar::{primitives::GeomWithData, RTree, RTreeObject};
 use serde::Deserialize;
 
-use backend::MapModel;
+use backend::{MapMatch, MapModel};
 
 #[derive(Parser)]
 struct Args {
@@ -201,7 +201,7 @@ fn read_traffic_volumes(path: &str, graph: &Graph, timer: &mut Timer) -> Result<
 }
 
 // The output is whether each road is part of the core network or not
-fn read_core_network(path: &str, graph: &Graph, timer: &mut Timer) -> Result<Vec<bool>> {
+fn read_core_network(path: &str, graph: &Graph, timer: &mut Timer) -> Result<Vec<MapMatch>> {
     // Read all relevant lines and make an RTree
     timer.step("read core network");
     let dataset = Dataset::open(path)?;
@@ -234,12 +234,26 @@ fn read_core_network(path: &str, graph: &Graph, timer: &mut Timer) -> Result<Vec
     timer.step("match roads to core network segments");
     let mut output = Vec::new();
     for road in &graph.roads {
-        output.push(
-            rtree
-                // TODO Plus a buffer?
-                .locate_in_envelope_intersecting(&road.linestring.envelope())
-                .any(|geom| road_geometry_similar(&road.linestring, geom)),
-        );
+        let mut result = MapMatch {
+            hausdorff: f64::INFINITY,
+            frechet: f64::INFINITY,
+            endpt1_diff: f64::INFINITY,
+            endpt2_diff: f64::INFINITY,
+        };
+        for geom in rtree.locate_in_envelope_intersecting(&road.linestring.envelope()) {
+            result.hausdorff = result
+                .hausdorff
+                .min(road.linestring.hausdorff_distance(geom));
+            result.frechet = result.frechet.min(road.linestring.frechet_distance(geom));
+            let dist1 =
+                Euclidean::distance(*road.linestring.coords().next().unwrap(), *geom.coords().next().unwrap());
+            let dist2 =
+                Euclidean::distance(*road.linestring.coords().last().unwrap(), *geom.coords().last().unwrap());
+            result.endpt1_diff = result.endpt1_diff.min(dist1);
+            result.endpt2_diff = result.endpt2_diff.min(dist2);
+        }
+
+        output.push(result);
     }
     Ok(output)
 }

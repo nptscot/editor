@@ -83,7 +83,15 @@
         layout={{
           visibility: show && showMatched ? "visible" : "none",
         }}
-      />
+        filter={["get", "matched"]}
+      >
+      <Popup openOn="hover" let:props>
+              <p>Hausdorff: {props.hausdorff}</p>
+              <p>Frechet: {props.frechet}</p>
+              <p>endpt1: {props.endpt1_diff}</p>
+              <p>endpt2: {props.endpt2_diff}</p>
+      </Popup>
+      </LineLayer>
     </GeoJSON>
   {/await}
 {/if}
