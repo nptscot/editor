@@ -23,11 +23,7 @@ pub fn match_linestrings<'a, T: Copy>(
         // TODO If there are multiple hits, pick the best
         let best_hit = candidates
             .iter()
-            .find(|obj| {
-                slice_line_to_match(obj.geom(), target)
-                    .map(|small| opts.accept(target, &small))
-                    .unwrap_or(false)
-            })
+            .find(|obj| opts.accept(obj.geom(), target))
             .map(|obj| obj.data);
 
         output.push(best_hit);
@@ -65,11 +61,7 @@ pub fn debug_match_linestrings<'a, T: Copy>(
         // TODO If there are multiple hits, pick the best
         let best_hit = candidates
             .iter()
-            .find(|obj| {
-                slice_line_to_match(obj.geom(), target)
-                    .map(|small| opts.accept(target, &small))
-                    .unwrap_or(false)
-            })
+            .find(|obj| opts.accept(obj.geom(), target))
             .map(|obj| obj.data);
 
         if best_hit.is_none()
@@ -85,24 +77,30 @@ pub fn debug_match_linestrings<'a, T: Copy>(
             };
             let out = all_out.as_mut().or_else(|| one_out.as_mut()).unwrap();
 
-            let mut f = mercator.to_wgs84_gj(target);
-            f.set_property("kind", "target");
-            f.set_property("idx", idx);
-            out.write_feature(&f)?;
+            // TODO Harder to show sliced targets, because there's one per source
+            {
+                let mut f = mercator.to_wgs84_gj(target);
+                f.set_property("kind", "full target");
+                f.set_property("idx", idx);
+                out.write_feature(&f)?;
+            }
 
             for obj in candidates {
-                let cmp = CompareLineStrings::new(target, obj.geom());
-                let mut f = mercator.to_wgs84_gj(obj.geom());
-                f.properties = Some(serde_json::to_value(&cmp)?.as_object().unwrap().clone());
-                f.set_property("kind", "full source");
-                //out.write_feature(&f)?;
-
-                if let Some(small) = slice_line_to_match(obj.geom(), target) {
-                    let cmp = CompareLineStrings::new(target, &small);
-                    f = mercator.to_wgs84_gj(&small);
+                if opts.slice_sources {
+                    let cmp = CompareLineStrings::new(target, obj.geom());
+                    let mut f = mercator.to_wgs84_gj(obj.geom());
                     f.properties = Some(serde_json::to_value(&cmp)?.as_object().unwrap().clone());
-                    f.set_property("kind", "sliced source");
+                    f.set_property("kind", "full source");
                     out.write_feature(&f)?;
+                } else {
+                    if let Some(small) = slice_line_to_match(obj.geom(), target) {
+                        let cmp = CompareLineStrings::new(target, &small);
+                        let mut f = mercator.to_wgs84_gj(&small);
+                        f.properties =
+                            Some(serde_json::to_value(&cmp)?.as_object().unwrap().clone());
+                        f.set_property("kind", "sliced source");
+                        out.write_feature(&f)?;
+                    }
                 }
             }
         }
@@ -123,11 +121,23 @@ pub struct Options {
     pub length_ratio_threshold: f64,
     /// How far away can the midpoints of the candidates be, in meters?
     pub midpt_dist_threshold: f64,
+    /// If true, assume the sources are "longer" than the targets, and so slice them before
+    /// comparing. If false, slice targets instead.
+    pub slice_sources: bool,
 }
 
 impl Options {
-    fn accept(&self, ls1: &LineString, ls2: &LineString) -> bool {
-        let cmp = CompareLineStrings::new(ls1, ls2);
+    fn accept(&self, source: &LineString, target: &LineString) -> bool {
+        let pair = if self.slice_sources {
+            (slice_line_to_match(source, target), target)
+        } else {
+            (slice_line_to_match(target, source), source)
+        };
+        let (Some(ls1), ls2) = pair else {
+            return false;
+        };
+
+        let cmp = CompareLineStrings::new(&ls1, ls2);
         cmp.angle_diff <= self.angle_diff_threshold
             && cmp.length_ratio <= self.length_ratio_threshold
             && cmp.midpt_dist <= self.midpt_dist_threshold

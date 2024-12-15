@@ -6,10 +6,10 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use elevation::GeoTiffElevation;
 use gdal::{vector::LayerAccess, Dataset};
-use geo::{Distance, Euclidean, Geometry, LineString, MultiPolygon};
+use geo::{Geometry, LineString, MultiPolygon};
 use graph::{Graph, Timer};
 use log::info;
-use rstar::{primitives::GeomWithData, RTree, RTreeObject};
+use rstar::{primitives::GeomWithData, RTree};
 use serde::Deserialize;
 
 use backend::{MapModel, Tier};
@@ -191,6 +191,7 @@ fn read_traffic_volumes(path: &str, graph: &Graph, timer: &mut Timer) -> Result<
         angle_diff_threshold: 10.0,
         length_ratio_threshold: 1.1,
         midpt_dist_threshold: 15.0,
+        slice_sources: true,
     };
     let results =
         match_lines::match_linestrings(&rtree, graph.roads.iter().map(|r| &r.linestring), &opts);
@@ -221,25 +222,33 @@ fn read_precalculated_flows(path: &str, graph: &Graph, timer: &mut Timer) -> Res
         };
         links.push(GeomWithData::new(geom, flow as usize));
     }
+
+    timer.step("match precalculated flows");
     let rtree = RTree::bulk_load(links);
+    // TODO Share if they're the same for all cases
+    let opts = match_lines::Options {
+        buffer_meters: 20.0,
+        angle_diff_threshold: 10.0,
+        length_ratio_threshold: 1.1,
+        midpt_dist_threshold: 15.0,
+        // The source data is MORE granular than our roads, so slice our roads instead
+        slice_sources: false,
+    };
+    //let results =
+    //match_lines::match_linestrings(&rtree, graph.roads.iter().map(|r| &r.linestring), &opts);
+    let one_file = true;
+    let only_debug_idx = None;
+    let results = match_lines::debug_match_linestrings(
+        &rtree,
+        graph.roads.iter().map(|r| &r.linestring),
+        &opts,
+        &graph.mercator,
+        one_file,
+        only_debug_idx,
+    )?;
 
-    // Multiple roads might match to the same link -- dual carriageways, for example.
-    // Insist on finding a match for every road.
-    timer.step("match roads to precalculated flows");
-    let mut output = Vec::new();
-    for road in &graph.roads {
-        // TODO Skip service roads or similar? Check what's in the NPT rnet
-
-        if let Some(link) = rtree
-            .locate_in_envelope_intersecting(&road.linestring.envelope())
-            .min_by_key(|link| compare_road_geometry(&road.linestring, link.geom()))
-        {
-            output.push(link.data);
-        } else {
-            output.push(0);
-        }
-    }
-    Ok(output)
+    // TODO Filter out service roads manually?
+    Ok(results.into_iter().map(|flow| flow.unwrap_or(0)).collect())
 }
 
 fn read_gradients(path: &str, graph: &Graph, timer: &mut Timer) -> Result<Vec<f64>> {
@@ -266,15 +275,6 @@ fn read_gradients(path: &str, graph: &Graph, timer: &mut Timer) -> Result<Vec<f6
         gradients.push(slope.into());
     }
     Ok(gradients)
-}
-
-// Just sum distance between endpoints
-// TODO When the volume links are much longer than OSM, or vice versa, how well does this work?
-fn compare_road_geometry(ls1: &LineString, ls2: &LineString) -> usize {
-    let dist1 = Euclidean::distance(*ls1.coords().next().unwrap(), *ls2.coords().next().unwrap());
-    let dist2 = Euclidean::distance(*ls1.coords().last().unwrap(), *ls2.coords().last().unwrap());
-    // cm precision
-    ((dist1 + dist2) * 100.0) as usize
 }
 
 // The output is per road. If the road is part of the core network, what tier is it?
@@ -321,6 +321,7 @@ fn read_core_network(path: &str, graph: &Graph, timer: &mut Timer) -> Result<Vec
         angle_diff_threshold: 10.0,
         length_ratio_threshold: 1.1,
         midpt_dist_threshold: 15.0,
+        slice_sources: true,
     };
     if true {
         Ok(match_lines::match_linestrings(
